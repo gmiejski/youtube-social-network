@@ -70,3 +70,5 @@ com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
 
+src/main/resources/client_secrets.json
+src/main/resources/youtube.properties
