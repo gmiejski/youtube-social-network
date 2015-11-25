@@ -34,7 +34,7 @@ public class YoutubeClient {
         youtube = new YouTube.Builder(Auth.HTTP_TRANSPORT, Auth.JSON_FACTORY, new HttpRequestInitializer() {
             public void initialize(HttpRequest request) throws IOException {
             }
-        }).setApplicationName("youtube-cmdline-search-sample").build();
+        }).setApplicationName("API Project").build();
     }
 
 
