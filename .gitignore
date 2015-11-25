@@ -62,6 +62,12 @@ buildNumber.properties
 # mpeltonen/sbt-idea plugin
 .idea_modules/
 
+# Eclipse-specific files
+/bin/
+.settings/
+.project
+.classpath
+
 # JIRA plugin
 atlassian-ide-plugin.xml
 
