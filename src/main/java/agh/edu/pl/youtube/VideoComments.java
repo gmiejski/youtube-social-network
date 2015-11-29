@@ -41,7 +41,7 @@ public class VideoComments {
 			}
 			
 			nextPageToken = results.getNextPageToken();
-			System.out.println(nextPageToken);
+//			System.out.println(nextPageToken);
 			
 		} while(nextPageToken != null);
 		

@@ -6,7 +6,10 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import com.google.api.services.youtube.model.Comment;
 
@@ -40,54 +43,60 @@ public class Neo4jPersister implements Closeable {
 	}
 	
 	public void persist(List<Comment> comments) {
-		System.out.println("Comments: "+comments.size());
+		Set<String> authors = new HashSet<>();
+		for(Comment comment : comments) {
+			authors.add(comment.getSnippet().getAuthorChannelId().getValue());
+		}
+		System.out.println("Comments: "+authors.size());
 		
 		String personSearch = "MATCH (p:Person) WHERE p.name = {1} RETURN p.name as name";
 		String personCreate = "CREATE (p:Person { name: {1} })";
+		String upCount = "MATCH (p1:Person {name: {1}})-[r:RELATED]-(p2:Person {name: {2}})"
+				+ " SET r.count = r.count + 1 RETURN r.count";
+
 		String grouping = "MATCH (p1:Person {name: {1}}), (p2:Person {name: {2}})"
-				+ " CREATE UNIQUE (p1)-[:RELATED {count: {3}}]-(p2)";
+				+ " CREATE UNIQUE (p1)-[r:RELATED {count: 1}]-(p2)";	
 		
-		for(Comment comment : comments) {
-			try(PreparedStatement stmt = connection.prepareStatement(personSearch))
-			{
-				String author = comment.getSnippet().getAuthorChannelId().toString();
-				stmt.setString(1, author);
-				try (ResultSet rs = stmt.executeQuery()) {
-					if(!rs.next()) {
-						PreparedStatement st = connection.prepareStatement(personCreate);
-						st.setString(1, author);
-						st.execute();
+		Iterator<String> it = authors.iterator();
+		do {	
+			try {
+				String author = it.next();
+				it.remove();
+//				System.out.println(author);
+				try(PreparedStatement stmt = connection.prepareStatement(personSearch))
+				{
+					stmt.setString(1, author);
+					try (ResultSet rs = stmt.executeQuery()) {
+						if(!rs.next()) {
+							PreparedStatement st = connection.prepareStatement(personCreate);
+							st.setString(1, author);
+							st.execute();
+						}
 					}
 				}
-			} catch (SQLException e) {
-	        	throw new RuntimeException(e);
-	        }
 
-			for(Comment collegue : comments) {
-				if(comment == collegue)
-					continue;
-				
-				PreparedStatement st;
-				try {
-					String author = comment.getSnippet().getAuthorChannelId().toString();
-					String author2 = collegue.getSnippet().getAuthorChannelId().toString();
-					st = connection.prepareStatement(grouping);
-				    st.setString(1, author);
-				    st.setString(2, author2);
-				    st.setInt
-				    (3, 1);
-				    st.execute();
-				} catch (SQLException e) {
-					throw new RuntimeException(e);
+				for (String collegue: authors) {
+//					System.out.println(collegue);
+					try(PreparedStatement stmt = connection.prepareStatement(upCount))
+					{
+						stmt.setString(1, author);
+						stmt.setString(2, collegue);
+						try (ResultSet rs = stmt.executeQuery()) {
+							if(!rs.next()) {
+								PreparedStatement st = connection.prepareStatement(grouping);
+							    st.setString(1, author);
+							    st.setString(2, collegue);
+							    st.execute();
+							}
+						}
+						
+					}
 				}
-			}
-			
-			try {
 				connection.commit();
 			} catch (SQLException e) {
 				throw new RuntimeException(e);
 			}
-		}
+		} while (it.hasNext());
 	}
 
 }
