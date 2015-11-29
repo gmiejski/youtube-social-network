@@ -72,3 +72,5 @@ crashlytics-build.properties
 
 src/main/resources/client_secrets.json
 src/main/resources/youtube.properties
+
+examples
