@@ -81,7 +81,7 @@ public class App {
 									Integer howMany = db.persist(youtubeMoviesComments.getComments(videoId));	
 									processedFully.add(videoId);
 									StringBuilder buffer = new StringBuilder(Thread.currentThread().getName());
-									buffer.append(" ").append(howMany.toString()).append("");
+									buffer.append(" ").append(howMany.toString()).append(" in ");
 									buffer.append(((double)(System.currentTimeMillis() - prev))/1000).append(" seconds");
 									System.out.println(buffer);
 								}		
