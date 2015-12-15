@@ -1,8 +1,8 @@
 package agh.edu.pl.youtube;
 
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.SearchListResponse;
@@ -30,8 +30,8 @@ public class ChannelVideos {
 		return partial.execute();
 	}
 	
-	public List<String> getVideoIds(String channelId) throws IOException {
-		List<String> videoIds = new LinkedList<>();
+	public ConcurrentLinkedQueue<String> getVideoIds(String channelId) throws IOException {
+		ConcurrentLinkedQueue<String> videoIds = new ConcurrentLinkedQueue<>();
 		String nextPageToken = null;
 		
 		do {
@@ -43,7 +43,7 @@ public class ChannelVideos {
 			}
 			
 			nextPageToken = results.getNextPageToken();
-			System.out.println(nextPageToken);
+//			System.out.println(nextPageToken);
 			
 		} while(nextPageToken != null);
 		

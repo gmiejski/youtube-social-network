@@ -1,6 +1,7 @@
 package agh.edu.pl.youtube;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -21,11 +22,11 @@ public class Neo4jPersister implements Closeable {
 		try {
 			Class.forName("org.neo4j.jdbc.Driver");
 			connection = DriverManager.getConnection(
-				"jdbc:neo4j://localhost:7474/",
+				"jdbc:neo4j:mem:graph.db",
 				"neo4j",
 				"test"
 			);
-			connection.setAutoCommit(false);
+//			connection.setAutoCommit(false);
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		} catch (SQLException e) {
@@ -42,10 +43,14 @@ public class Neo4jPersister implements Closeable {
 		}
 	}
 	
-	public void persist(List<Comment> comments) {
+	public void persist(List<Comment> comments) throws IOException {
 		Set<String> authors = new HashSet<>();
 		for(Comment comment : comments) {
-			authors.add(comment.getSnippet().getAuthorChannelId().getValue());
+			if(comment.getSnippet().getAuthorChannelId() == null) {
+				authors.add(comment.getSnippet().getAuthorGoogleplusProfileUrl());
+			} else {
+				authors.add(comment.getSnippet().getAuthorChannelId().getValue());
+			}
 		}
 		System.out.println("Comments: "+authors.size());
 		
@@ -92,7 +97,7 @@ public class Neo4jPersister implements Closeable {
 						
 					}
 				}
-				connection.commit();
+//				connection.commit();
 			} catch (SQLException e) {
 				throw new RuntimeException(e);
 			}
