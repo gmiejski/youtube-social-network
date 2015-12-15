@@ -16,16 +16,13 @@ import com.google.api.services.youtube.model.Comment;
 
 public class Neo4jPersister implements Closeable {
 	
+	// don't forget CREATE INDEX ON :Person(name)
 	private Connection connection;
 	
-	public Neo4jPersister() {
+	public Neo4jPersister(String dir, String user, String password) {
 		try {
 			Class.forName("org.neo4j.jdbc.Driver");
-			connection = DriverManager.getConnection(
-				"jdbc:neo4j:mem:graph.db",
-				"neo4j",
-				"test"
-			);
+			connection = DriverManager.getConnection("jdbc:neo4j:file:"+dir, user, password);
 //			connection.setAutoCommit(false);
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
@@ -43,7 +40,7 @@ public class Neo4jPersister implements Closeable {
 		}
 	}
 	
-	public void persist(List<Comment> comments) throws IOException {
+	public int persist(List<Comment> comments) throws IOException {
 		Set<String> authors = new HashSet<>();
 		for(Comment comment : comments) {
 			if(comment.getSnippet().getAuthorChannelId() == null) {
@@ -52,7 +49,10 @@ public class Neo4jPersister implements Closeable {
 				authors.add(comment.getSnippet().getAuthorChannelId().getValue());
 			}
 		}
-		System.out.println("Comments: "+authors.size());
+		if(authors.isEmpty()) {
+			return 0;
+		}
+		int retVal = authors.size();
 		
 		String personSearch = "MATCH (p:Person) WHERE p.name = {1} RETURN p.name as name";
 		String personCreate = "CREATE (p:Person { name: {1} })";
@@ -102,6 +102,7 @@ public class Neo4jPersister implements Closeable {
 				throw new RuntimeException(e);
 			}
 		} while (it.hasNext());
+		return retVal;
 	}
 
 }

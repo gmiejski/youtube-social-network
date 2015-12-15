@@ -5,11 +5,13 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -19,21 +21,32 @@ import java.util.concurrent.TimeUnit;
 
 public class App {
 
-	// -2UU3f5lDZ8 4 comments
-	// K2jQgHaK1rs 49 comments
-	static String videoId = "RtNesQeAKiY";
-	// UCGaVdbSav8xWuFWTadK6loA vlogbrothers
-	// UCue2Utve3Cz8Cb2eIJzWGUQ nanokarrin
-	static String channelId = "UCGaVdbSav8xWuFWTadK6loA"; 
-	static int threads = 8;
+	private static final String PROPERTIES_FILENAME = "store.properties";
+
+	static String channelId = "UC9-y-6csu5WGm29I7JiwpnA"; 
+	static int maxThreads = 8;
+	static Properties properties = new Properties();
 	
 	public static void main(String[] args) throws IOException {
-		YoutubeClient youtube = new YoutubeClient();
+		String cacheDir, dbDir, user, password;
 		
+		try {
+            InputStream in = YoutubeSearch.class.getResourceAsStream("/" + PROPERTIES_FILENAME);
+            properties.load(in);
+        } catch (IOException e) {
+            System.err.println("There was an error reading " + PROPERTIES_FILENAME + ": " + e.getCause()  + " : " + e.getMessage());
+            System.exit(1);
+        }
+		cacheDir = properties.getProperty("cache_dir", System.getProperty("user.home") + "/" + "app-cache");
+        dbDir = properties.getProperty("db_dir");
+        user = properties.getProperty("user", "neo4j");
+        password = properties.getProperty("password");
+        
+		YoutubeClient youtube = new YoutubeClient();
 		// for resuming
 		Set<String> processedFully = Collections.synchronizedSet(new HashSet<String>());
 		try {
-			try(FileInputStream streamIn = new FileInputStream("/media/ark/Windows7/Linux-Shared/app-cache");
+			try(FileInputStream streamIn = new FileInputStream(cacheDir);
 			ObjectInputStream objectinputstream = new ObjectInputStream(streamIn);) {
 				@SuppressWarnings("unchecked")
 				Set<String> readCase = (Set<String>) objectinputstream.readObject();
@@ -53,24 +66,28 @@ public class App {
 		allVideos.removeAll(processedFully);
 		System.out.println("Got Vids!"+" time: "+((double)(System.currentTimeMillis() - prev))/1000+" seconds");
 		
-		ExecutorService service = Executors.newFixedThreadPool(threads);
-		for(int i = 1; i < threads; i++) {
+		ExecutorService service = Executors.newFixedThreadPool(maxThreads);
+		
+		for(int i = 1; i <= maxThreads; i++) {
 			service.execute(new Runnable() {
 				@Override
 				public void run() {
-					try(Neo4jPersister db = new Neo4jPersister()) {
+					try(Neo4jPersister db = new Neo4jPersister(dbDir, user, password)) {
 						while(!allVideos.isEmpty()) {
 							String videoId = allVideos.poll();
 							long prev = System.currentTimeMillis();
 							try {
 								if(videoId != null) {
-									db.persist(youtubeMoviesComments.getComments(videoId));
-								}
-								processedFully.add(videoId);
+									Integer howMany = db.persist(youtubeMoviesComments.getComments(videoId));	
+									processedFully.add(videoId);
+									StringBuilder buffer = new StringBuilder(Thread.currentThread().getName());
+									buffer.append(" ").append(howMany.toString()).append("");
+									buffer.append(((double)(System.currentTimeMillis() - prev))/1000).append(" seconds");
+									System.out.println(buffer);
+								}		
 							} catch (IOException e) {
 								e.printStackTrace();
-							}
-							System.out.println(Thread.currentThread().getName()+" time: "+((double)(System.currentTimeMillis() - prev))/1000+" seconds");
+							}		
 						}	
 					}
 				}
@@ -82,8 +99,8 @@ public class App {
 			execService.scheduleAtFixedRate(new Runnable() {
 				public void run() {
 					try {
-						Files.deleteIfExists(new File("/media/ark/Windows7/Linux-Shared/app-cache").toPath());
-						try(FileOutputStream fout = new FileOutputStream("/media/ark/Windows7/Linux-Shared/app-cache", false);
+						Files.deleteIfExists(new File(cacheDir).toPath());
+						try(FileOutputStream fout = new FileOutputStream(cacheDir, false);
 						    ObjectOutputStream oos = new ObjectOutputStream(fout);) {
 							oos.writeObject(processedFully);
 						} 
@@ -91,7 +108,7 @@ public class App {
 						e.printStackTrace();
 					}
 				}
-			}, 10L, 200L, TimeUnit.SECONDS);
+			}, 10L, 60L, TimeUnit.SECONDS);
 			service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 			execService.shutdownNow();
 		} catch (InterruptedException e) {
