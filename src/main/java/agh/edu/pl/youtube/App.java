@@ -9,8 +9,10 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -22,8 +24,13 @@ import java.util.concurrent.TimeUnit;
 public class App {
 
 	private static final String PROPERTIES_FILENAME = "store.properties";
-
-	static String channelId = "UC9-y-6csu5WGm29I7JiwpnA"; 
+	static List<String> channels = Arrays.asList(
+			"UC9-y-6csu5WGm29I7JiwpnA", // numberphille
+			"UCue2Utve3Cz8Cb2eIJzWGUQ", // nanokarrin
+			"UCy92fXa6yBrLnKdW1pYJlMw", // moviebob
+			"UCtXKDgv1AVoG88PLl8nGXmw", // googletalks
+			"UCGaVdbSav8xWuFWTadK6loA" // vlogbrothers
+	);
 	static int maxThreads = 8;
 	static Properties properties = new Properties();
 	
@@ -61,58 +68,61 @@ public class App {
 			
 		ChannelVideos channelVids = new ChannelVideos(youtube);
 		VideoComments youtubeMoviesComments = new VideoComments(youtube);
-		long prev = System.currentTimeMillis();
-		ConcurrentLinkedQueue<String> allVideos = channelVids.getVideoIds(channelId);
-		allVideos.removeAll(processedFully);
-		System.out.println("Got Vids!"+" time: "+((double)(System.currentTimeMillis() - prev))/1000+" seconds");
 		
-		ExecutorService service = Executors.newFixedThreadPool(maxThreads);
-		
-		for(int i = 1; i <= maxThreads; i++) {
-			service.execute(new Runnable() {
-				@Override
-				public void run() {
-					try(Neo4jPersister db = new Neo4jPersister(dbDir, user, password)) {
-						while(!allVideos.isEmpty()) {
-							String videoId = allVideos.poll();
-							long prev = System.currentTimeMillis();
-							try {
-								if(videoId != null) {
-									Integer howMany = db.persist(youtubeMoviesComments.getComments(videoId));	
-									processedFully.add(videoId);
-									StringBuilder buffer = new StringBuilder(Thread.currentThread().getName());
-									buffer.append(" ").append(howMany.toString()).append(" in ");
-									buffer.append(((double)(System.currentTimeMillis() - prev))/1000).append(" seconds");
-									System.out.println(buffer);
+		for(String channelId: channels) {	
+			long prev = System.currentTimeMillis();
+			ConcurrentLinkedQueue<String> allVideos = channelVids.getVideoIds(channelId);
+			allVideos.removeAll(processedFully);
+			System.out.println("Got Vids from "+channelId+" in: "+((double)(System.currentTimeMillis() - prev))/1000+" seconds");
+			
+			ExecutorService service = Executors.newFixedThreadPool(maxThreads);
+			
+			for(int i = 1; i <= maxThreads; i++) {
+				service.execute(new Runnable() {
+					@Override
+					public void run() {
+						try(Neo4jPersister db = new Neo4jPersister(dbDir, user, password)) {
+							while(!allVideos.isEmpty()) {
+								String videoId = allVideos.poll();
+								long prev = System.currentTimeMillis();
+								try {
+									if(videoId != null) {
+										System.out.println("try "+Thread.currentThread().getName());
+										Integer howMany = db.persist(youtubeMoviesComments.getComments(videoId));	
+										processedFully.add(videoId);
+										StringBuilder buffer = new StringBuilder(Thread.currentThread().getName());
+										buffer.append(" ").append(howMany.toString()).append(" in ");
+										buffer.append(((double)(System.currentTimeMillis() - prev))/1000).append(" seconds");
+										System.out.println(buffer);
+									}		
+								} catch (IOException e) {
+									e.printStackTrace();
 								}		
-							} catch (IOException e) {
-								e.printStackTrace();
-							}		
-						}	
+							}	
+						}
 					}
-				}
-			});
-		}
-		service.shutdown();
-		try {
-			ScheduledExecutorService execService = Executors.newScheduledThreadPool(1);
-			execService.scheduleAtFixedRate(new Runnable() {
-				public void run() {
-					try {
-						Files.deleteIfExists(new File(cacheDir).toPath());
-						try(FileOutputStream fout = new FileOutputStream(cacheDir, false);
-						    ObjectOutputStream oos = new ObjectOutputStream(fout);) {
-							oos.writeObject(processedFully);
-						} 
-					} catch (IOException e) {
-						e.printStackTrace();
+				});
+			}
+			try {
+				ScheduledExecutorService execService = Executors.newScheduledThreadPool(1);
+				execService.scheduleAtFixedRate(new Runnable() {
+					public void run() {
+						try {
+							Files.deleteIfExists(new File(cacheDir).toPath());
+							try(FileOutputStream fout = new FileOutputStream(cacheDir, false);
+							    ObjectOutputStream oos = new ObjectOutputStream(fout);) {
+								oos.writeObject(processedFully);
+							} 
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
 					}
-				}
-			}, 10L, 60L, TimeUnit.SECONDS);
-			service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-			execService.shutdownNow();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
+				}, 10L, 60L, TimeUnit.SECONDS);
+				service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+				execService.shutdownNow();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
