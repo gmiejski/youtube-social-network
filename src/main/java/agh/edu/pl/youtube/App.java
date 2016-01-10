@@ -26,8 +26,6 @@ public class App {
 	private static final String PROPERTIES_FILENAME = "store.properties";
 	static List<String> channels = Arrays.asList(
 			"UC9-y-6csu5WGm29I7JiwpnA", // numberphille
-			"UCue2Utve3Cz8Cb2eIJzWGUQ", // nanokarrin
-			"UCy92fXa6yBrLnKdW1pYJlMw", // moviebob
 			"UCtXKDgv1AVoG88PLl8nGXmw", // googletalks
 			"UCGaVdbSav8xWuFWTadK6loA" // vlogbrothers
 	);
@@ -69,7 +67,7 @@ public class App {
 		ChannelVideos channelVids = new ChannelVideos(youtube);
 		VideoComments youtubeMoviesComments = new VideoComments(youtube);
 		
-		for(String channelId: channels) {	
+		for(String channelId: channels) {			
 			long prev = System.currentTimeMillis();
 			ConcurrentLinkedQueue<String> allVideos = channelVids.getVideoIds(channelId);
 			allVideos.removeAll(processedFully);
@@ -87,12 +85,11 @@ public class App {
 								long prev = System.currentTimeMillis();
 								try {
 									if(videoId != null) {
-										System.out.println("try "+Thread.currentThread().getName());
-										Integer howMany = db.persist(youtubeMoviesComments.getComments(videoId));	
+										Integer howMany = db.persist(youtubeMoviesComments.getComments(videoId, channelId), channelId);	
 										processedFully.add(videoId);
 										StringBuilder buffer = new StringBuilder(Thread.currentThread().getName());
 										buffer.append(" ").append(howMany.toString()).append(" in ");
-										buffer.append(((double)(System.currentTimeMillis() - prev))/1000).append(" seconds");
+										buffer.append(((double)(System.currentTimeMillis() - prev))/1000).append(" seconds").append(" ").append(videoId);
 										System.out.println(buffer);
 									}		
 								} catch (IOException e) {

@@ -3,6 +3,7 @@ package agh.edu.pl.youtube;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.services.youtube.YouTube;
+import com.google.api.services.youtube.model.Comment;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,5 +46,13 @@ public class YoutubeClient {
     public String apiKey() {
         return properties.getProperty("youtube.apikey");
     }
-
+    
+    public static String getAuthor(Comment comment) {
+    	if(comment.getSnippet().getAuthorChannelId() == null) {
+			return comment.getSnippet().getAuthorGoogleplusProfileUrl();
+		} else {
+			return comment.getSnippet().getAuthorChannelId().getValue();
+		}
+    }
+    
 }
