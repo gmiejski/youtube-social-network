@@ -1,0 +1,12 @@
+1. Relationships count:
+MATCH (n)-[r]->(m) RETURN type(r), count(*)
+5503141
+
+2. Nodes count:
+MATCH (n) return count(n)
+30805
+
+3. Average RELATED count
+MATCH (n)-[r]->() return avg(r.count)
+1.229151860728264
+

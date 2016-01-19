@@ -1,0 +1,14 @@
+MATCH (a:Person)-[b]->(c)
+RETURN DISTINCT b.count as posts_count, count(b.count) as c
+order by c
+
+
+
+MATCH (a:Person)-[b]->(c)
+RETURN DISTINCT a,b,c , sum(b.count) as posts_count
+order by posts_count
+limit 10
+
+
+
+start n=node(*) WHERE n-[r]->(c) RETURN n, r.count ORDER BY r.count LIMIT 1

@@ -1,0 +1,4 @@
+match (a:Person)-[r:RELATED]->(b) with r.count as r_count
+match r_count
+return r_count, count(r_count) as count_of_number_of_counts
+order by  r_count, count_of_number_of_counts

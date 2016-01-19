@@ -1,0 +1,13 @@
+match (a:Person)-[r:RELATED]->(b:Person) with r.count as movies_commented
+where a.name <> b.name
+match movies_commented
+return movies_commented, count(movies_commented) as rcc
+order by  movies_commented, rcc
+
+
+
+match (a:Person)-[r:RELATED]->(b:Person)-[r2:RELATED]->(a:Person) with a , b, (r.count+r2.count) as cc
+where a.name <> b.name
+match a, b
+return sum(cc)
+

@@ -1,0 +1,5 @@
+START n = node(*)
+MATCH n-[r:RELATED]->c
+where n.name <> c.name
+RETURN n.name, count(r) AS connections
+ORDER BY connections DESC
